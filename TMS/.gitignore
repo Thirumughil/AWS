@@ -1,0 +1,28 @@
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Cache directories
+cache/
+**/cache/
+*.part
+
+# Data directories (raw and processed datasets)
+data/raw/
+data/processed/
+**/data/raw/
+**/data/processed/
+*.tif
+
+# Environment and sensitive keys
+.env
+*.pem
