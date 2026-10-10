@@ -64,7 +64,10 @@ CV_FOLDS = 5
 SEED = 7
 
 PROFILE = os.environ.get("AWS_PROFILE", "climateguard")
-S3_PREFIX = "s3://urban-heat-risk-sai-001/processed/"
+S3_BUCKET = os.environ.get("S3_BUCKET", "urban-heat-risk-sai-001")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+S3_PREFIX = os.environ.get("S3_PREFIX", f"s3://{S3_BUCKET}/processed/")
+
 V4 = hasattr(h3, "grid_disk")
 
 LAND = ["built_frac", "tree_frac", "grass_shrub_frac", "crop_frac", "bare_frac", "water_frac"]
@@ -417,7 +420,7 @@ def main():
     files = predict_day(args.day) if args.day else train(args)
     if args.upload:
         for f in files:
-            cmd = ["aws", "s3", "cp", str(f), S3_PREFIX + f.name, "--profile", PROFILE]
+            cmd = ["aws", "s3", "cp", str(f), S3_PREFIX + f.name, "--profile", PROFILE, "--region", AWS_REGION]
             try:
                 subprocess.run(cmd, check=True)
             except (FileNotFoundError, subprocess.CalledProcessError) as err:

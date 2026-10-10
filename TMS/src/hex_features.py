@@ -53,8 +53,11 @@ MIN_COVER = 0.95
 MAX_CLOUD_ALL = 20                                    # for --all
 
 PROFILE = os.environ.get("AWS_PROFILE", "climateguard")
+S3_BUCKET = os.environ.get("S3_BUCKET", "urban-heat-risk-sai-001")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 WORLDCOVER_URL = "s3://esa-worldcover/v200/2021/map/ESA_WorldCover_10m_2021_v200_N12E078_Map.tif"
-S3_PREFIX = "s3://urban-heat-risk-sai-001/processed/"
+S3_PREFIX = os.environ.get("S3_PREFIX", f"s3://{S3_BUCKET}/processed/")
+
 ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
 
 LST_DEFAULT = (0.00341802, 149.0)                     # Landsat C2 L2 surface temperature, to kelvin
@@ -338,7 +341,7 @@ def main():
         for name in ("chennai_hex_lst.csv", "chennai_hex_ndvi_s2.csv", "chennai_hex_landcover.csv"):
             f = PROCESSED / name
             if f.exists():
-                cmd = ["aws", "s3", "cp", str(f), S3_PREFIX + name, "--profile", PROFILE]
+                cmd = ["aws", "s3", "cp", str(f), S3_PREFIX + name, "--profile", PROFILE, "--region", AWS_REGION]
                 try:
                     subprocess.run(cmd, check=True)
                 except (FileNotFoundError, subprocess.CalledProcessError) as e:

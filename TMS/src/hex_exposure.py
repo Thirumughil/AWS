@@ -55,7 +55,10 @@ SCREEN = {"building": 276231, "hospital": 650, "school": 577, "community_centre"
           "library": 92, "park": 417, "water": 33}
 
 PROFILE = os.environ.get("AWS_PROFILE", "climateguard")
-S3_PREFIX = "s3://urban-heat-risk-sai-001/processed/"
+S3_BUCKET = os.environ.get("S3_BUCKET", "urban-heat-risk-sai-001")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+S3_PREFIX = os.environ.get("S3_PREFIX", f"s3://{S3_BUCKET}/processed/")
+
 
 V4 = hasattr(h3, "latlng_to_cell")
 TO_XY = Transformer.from_crs(4326, UTM, always_xy=True)
@@ -277,7 +280,7 @@ def main():
 
     if args.upload:
         for f in (out1, out2):
-            cmd = ["aws", "s3", "cp", str(f), S3_PREFIX + f.name, "--profile", PROFILE]
+            cmd = ["aws", "s3", "cp", str(f), S3_PREFIX + f.name, "--profile", PROFILE, "--region", AWS_REGION]
             try:
                 subprocess.run(cmd, check=True)
             except (FileNotFoundError, subprocess.CalledProcessError) as err:

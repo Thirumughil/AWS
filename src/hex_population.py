@@ -48,7 +48,10 @@ OVER65 = ["t_65", "t_70", "t_75", "t_80", "t_85", "t_90"]
 PAD_DEG = 0.01                                          # margin around the grid so edge hexes are complete
 
 PROFILE = os.environ.get("AWS_PROFILE", "climateguard")
-S3_PREFIX = "s3://urban-heat-risk-sai-001/processed/"
+S3_BUCKET = os.environ.get("S3_BUCKET", "urban-heat-risk-sai-001")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
+S3_PREFIX = os.environ.get("S3_PREFIX", f"s3://{S3_BUCKET}/processed/")
+
 V4 = hasattr(h3, "latlng_to_cell")
 
 
@@ -232,7 +235,7 @@ def main():
     print(f"\nSaved {dest} ({len(out)} rows)")
 
     if args.upload:
-        cmd = ["aws", "s3", "cp", str(dest), S3_PREFIX + dest.name, "--profile", PROFILE]
+        cmd = ["aws", "s3", "cp", str(dest), S3_PREFIX + dest.name, "--profile", PROFILE, "--region", AWS_REGION]
         try:
             subprocess.run(cmd, check=True)
         except (FileNotFoundError, subprocess.CalledProcessError) as err:

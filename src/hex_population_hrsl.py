@@ -46,7 +46,7 @@ GRID = PROCESSED / "chennai_h3_res9.geojson"
 BASE = "/vsis3/dataforgood-fb-data/hrsl-cogs"
 PAD_DEG = 0.01
 PROFILE = os.environ.get("AWS_PROFILE", "climateguard")
-S3_BUCKET = os.environ.get("S3_BUCKET", "urban-heat-risk-sai-002")
+S3_BUCKET = os.environ.get("S3_BUCKET", "urban-heat-risk-sai-001")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 S3_PREFIX = os.environ.get("S3_PREFIX", f"s3://{S3_BUCKET}/processed/")
 
