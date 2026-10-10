@@ -56,7 +56,7 @@ def cell(lat, lon):
     return h3.latlng_to_cell(lat, lon, H3_RES) if V4 else h3.geo_to_h3(lat, lon, H3_RES)
 
 
-REMOTE_OK = True          # set to False after the first "range requests not supported" error
+REMOTE_OK = False         # WorldPop's server refuses partial reads, so go straight to whole-file downloads
 
 
 def read_local_or_remote(path, bounds):
