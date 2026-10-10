@@ -1,0 +1,115 @@
+# ClimateGuard AI: Risk Model Readiness Audit
+
+**Target Workspace:** `D:\AWS Project\AWS Project`  
+**Associated Workspace:** `D:\AWS Project\urban-heat-python`  
+**Report Path:** `reports/risk_model_readiness.md`  
+**Date:** 2026-10-10  
+**Pilot Location:** Chennai, Tamil Nadu, India (Greater Chennai Corporation - GCC)
+
+---
+
+## 1. Executive Summary
+
+This audit assesses the readiness of ClimateGuard AI's codebase to support an operational urban heat-risk prediction model for Chennai. The data ingestion pipeline and quality validator (Phase A and Phase B) are fully operational with 15 passing automated tests. This audit establishes what risk calculations and modeling logic currently exist, identifies genuine local data availability, documents the existing risk formula, details missing satellite and demographic datasets, and recommends the next safe implementation step.
+
+---
+
+## 2. Existing vs. Missing Model Components
+
+| Component | Existing Code & Source Location | Implementation Status | Missing Elements |
+| :--- | :--- | :--- | :--- |
+| **1. Heat-Risk Calculation & Hazard Scoring** | • `urban-heat-python/hello_world/app.py` (lines 13–22)<br>• `urban-heat-python/production-lambda/lambda_function.py` (lines 16–30) | **Prototype Rule-of-Thumb Implemented**.<br>A 4-tier decision tree based on dry-bulb temperature and relative humidity. | Standard biometeorological equations (Steadman's Apparent Temperature, NOAA Rothfusz Heat Index, Wet-Bulb Globe Temperature) are not implemented. |
+| **2. Weather Processing & Historical Analysis** | • `src/ingestion/weather_ingestor.py` (`WeatherIngestor`)<br>• `src/city_screen.py` (`check_2_forecast`, `check_3_historical_heat`) | **Fully Implemented Locally**.<br>168-hour forecast ingestion with disk caching; ERA5 heatwave calculation ($P_{95} = 36.7^\circ\text{C}$, 26 heatwave runs). | Real-time ground station observations from the India Meteorological Department (IMD) are not connected (forecast only). |
+| **3. Exposure & Demographic Vulnerability** | • `src/city_screen.py` (`check_6_population_age`)<br>• `src/ingestion/quality_validator.py` (`validate_population_rasters`) | **Audit/Verification Only**.<br>WorldPop 100m URLs verified via HTTP HEAD, but rasters are not downloaded locally. | No population weighting, age-vulnerability index (under-5, 65+), or ward census aggregation is implemented in code. |
+| **4. Building Heat Exposure Analysis** | • `urban-heat-python/building_heat/raster_processor.py`<br>• `urban-heat-python/building_heat/spatial_analysis.py`<br>• `urban-heat-python/building_heat/risk_classifier.py` | **Processing Engine Implemented**.<br>Calibration formula, QA bitmasks, and zonal extraction exist. | Real Landsat 8 Level-2 thermal GeoTIFFs are absent locally. Processing strictly returns `Unknown` for unobserved areas. |
+| **5. Cooling-Centre Optimization** | • `src/ingestion/facilities_ingestor.py` (`FacilitiesIngestor`)<br>• `src/city_screen.py` (`check_7_facilities`, `check_9_heat_action_plan`) | **Inventory Extraction Only**.<br>Extracts counts and locations of 1,941 facilities (766 hospitals, 630 schools, 472 parks, 73 community halls). | No spatial catchment routing, pedestrian network reachability (500m/15-min walk), or cooling deficit optimization is coded. |
+| **6. API Endpoints & Serverless Handlers** | • `urban-heat-python/hello_world/app.py` (`lambda_handler`)<br>• `urban-heat-python/local_proxy.py` (`Handler.do_POST`)<br>• `urban-heat-backend/src/ServerlessAPI` (C# ASP.NET Core template) | **Point-in-Time Prototype Deployed on Cloud**.<br>Accepts POST request with single-location readings and stores to DynamoDB. | Endpoints evaluate single point readings in isolation; they are not connected to the 168-hour spatial forecast grid. |
+| **7. Dashboard Integration** | • `urban-heat-python/dashboard/index.html` (Static web client)<br>• `urban-heat-python/building_heat/app.py` (Local Streamlit map application) | **Implemented for Visual Demonstration**.<br>Streamlit renders interactive Folium map of sample buildings with risk color coding and data-pending notices. | Frontend currently visualizes sample building polygons; not connected to dynamic forecast timeseries. |
+
+---
+
+## 3. Genuine Local Data Availability Audit
+
+| Dataset | Local File Path | Availability Status | Verified Attributes / Contents |
+| :--- | :--- | :--- | :--- |
+| **Administrative Boundary** | `data/raw/chennai_tamil_nadu_india_boundary.geojson` | **Available on disk** (19.2 KB) | 1 Polygon feature, area = 433.71 km² in EPSG:32644 (UTM 44N), EPSG:4326 WGS84 coordinates. Matches Greater Chennai Corporation boundary. |
+| **Weather Forecast (168h)** | `cache/weather_chennai_forecast_168h.json` | **Available on disk** (42.5 KB) | 168 continuous hourly records (temperature, humidity, apparent temperature, precipitation, wind speed). Temperature range: 26.2°C to 34.4°C. |
+| **Critical Facilities** | `cache/chennai_facilities_cache.json` | **Available on disk** (350 B) | 1,941 verified facility points (766 hospitals, 630 schools, 73 community centres, 472 parks). |
+| **Building Footprints** | `urban-heat-python/data/raw/chennai_buildings_sample.geojson` | **Available on disk** (18.4 MB) | 27,139 valid polygons. **Limitation**: Covers a central sample corridor (`80.199°–80.250°E, 13.039°–13.080°N`), **not** city-wide. |
+| **WorldPop 100m Demographics** | `data/raw/population/` | **MISSING LOCAL FILE** | 0 local GeoTIFF files. Remote URLs verified via HTTP HEAD in Phase 0, but tiles are not downloaded locally. |
+| **Landsat 8 Thermal Imagery** | `data/raw/landsat/` | **MISSING LOCAL FILE** | Target scene `LC08_L2SP_142051_20260926_20261001_02_T1` GeoTIFFs (`*_ST_B10.TIF`, `*_QA_PIXEL.TIF`, `*_ST_QA.TIF`, `*_MTL.txt`) are not downloaded. |
+
+---
+
+## 4. Current Risk Calculation Formula
+
+The only heat-risk calculation formula currently implemented in the codebase resides in `urban-heat-python/hello_world/app.py` (lines 13–22) and `urban-heat-python/production-lambda/lambda_function.py` (lines 16–30):
+
+```python
+def calculate_risk(temperature, humidity):
+    """Calculate basic heat-risk category."""
+    if temperature >= 40 and humidity >= 60:
+        return "SEVERE"
+    elif temperature >= 40 or (temperature >= 35 and humidity >= 60):
+        return "HIGH"
+    elif temperature >= 35 or (temperature >= 30 and humidity >= 70):
+        return "MODERATE"
+    else:
+        return "LOW"
+```
+
+### Analysis of the Formula:
+1. **Inputs**:
+   - `temperature`: Dry-bulb air temperature in degrees Celsius ($^\circ\text{C}$), validated to range $[-50, 70]$.
+   - `humidity`: Relative humidity in percentage ($\%RH$), validated to range $[0, 100]$.
+2. **Output**:
+   - Discrete text category: `"LOW"`, `"MODERATE"`, `"HIGH"`, or `"SEVERE"`.
+3. **Scientific & Operational Limitations**:
+   - **Unweighted Heuristic**: The thresholds are arbitrary rule-of-thumb boundaries, not derived from biometeorological science or epidemiological heat-health surveillance.
+   - **Ignoring Water Vapor Pressure**: In tropical coastal climates like Chennai, high relative humidity (e.g., 34°C with 80% RH) generates an Apparent Temperature $> 48^\circ\text{C}$ (extreme danger), but this formula classifies it merely as `"MODERATE"` because temperature is below 35°C.
+   - **Static Point Evaluation**: Does not consider duration of exposure (consecutive hours above threshold), nighttime minimum temperatures (diurnal cooling failure), solar radiation, or wind velocity.
+   - **No Demographic or Spatial Weighting**: Treats a shaded park and an unshaded metal-roofed settlement identically.
+
+---
+
+## 5. Critical Data Limitations & Anti-Fabrication Safeguards
+
+1. **Missing Satellite & Demographic Rasters**:
+   - **Landsat 8 Collection 2 Level-2**: Without `ST_B10.TIF` and `QA_PIXEL.TIF`, land surface temperature (LST) cannot be extracted for buildings. The pipeline strictly records status as `MISSING_LOCAL_FILE` and classifies unobserved buildings as `Unknown`. No simulated values are generated.
+   - **WorldPop 100m Grids**: Vulnerability rasters are absent locally. The model must not invent demographic population counts or vulnerability percentages.
+2. **Sample-Only Building Coverage**:
+   - The 27,139 building footprints represent a sample area covering approximately $20\text{ km}^2$ along Chennai's central corridor, compared to Greater Chennai Corporation's total municipal area of $433.71\text{ km}^2$.
+   - **Guardrail**: All outputs must label building results as `sample_only` to prevent extrapolations across unobserved wards.
+3. **Forecast vs. Ground Observation**:
+   - The 168-hour timeseries is a model prediction from Open-Meteo, not verified real-time weather station observations from IMD.
+4. **Accuracy Statement**:
+   - **Zero model accuracy or predictive performance is claimed**, as the prototype has not been evaluated against observed heat-related morbidity, mortality, or historical emergency dispatches.
+
+---
+
+## 6. Recommended Smallest Safe Next Implementation Step
+
+### Recommended Step: Implement a Local Biometeorological Heat Hazard Engine
+**Proposed File:** `src/models/heat_hazard_engine.py`  
+**Proposed Tests:** `tests/test_heat_hazard_engine.py`  
+**Workspace:** `D:\AWS Project\AWS Project`
+
+#### Technical Rationale:
+1. **Immediate Execution Without New Downloads**: Operates entirely on the 168-hour forecast already validated in `cache/weather_chennai_forecast_168h.json`.
+2. **Replaces Heuristic with Validated Formulations**:
+   - Implements **Steadman's Apparent Temperature**:
+     $$AT = T_{2m} + 0.33 \cdot e - 0.70 \cdot v_{10m} - 4.00$$
+     where $e = \frac{RH}{100} \cdot 6.105 \cdot \exp\left(\frac{17.27 \cdot T_{2m}}{237.7 + T_{2m}}\right)$ (vapor pressure in hPa).
+   - Implements the **NOAA National Weather Service (NWS) Heat Index** (Rothfusz regression equation with low/high humidity corrections).
+3. **Aligns with Official TNSDMA Alert Categories**:
+   - Maps continuous heat hazard scores to Tamil Nadu State Disaster Management Authority / IMD color-coded alert tiers:
+     - **Green (Normal)**: $AT < 32^\circ\text{C}$
+     - **Yellow (Caution)**: $32^\circ\text{C} \le AT < 41^\circ\text{C}$
+     - **Orange (Extreme Caution)**: $41^\circ\text{C} \le AT < 54^\circ\text{C}$
+     - **Red (Danger / Heatwave Alert)**: $AT \ge 54^\circ\text{C}$
+4. **Completely Local & Safe**:
+   - Requires zero AWS deployments, installs zero new packages, modifies zero raw data files, and runs purely within `.venv`.
+
+---
+
+**Report complete. Awaiting user approval before implementation.**

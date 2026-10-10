@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClimateGuard AI — Chennai Heat Hazard Dashboard</title>
+  <style>
+    :root {
+      --bg-primary: #0f172a;
+      --bg-surface: #1e293b;
+      --bg-card: #1e293b;
+      --bg-table-header: #334155;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --border-color: #334155;
+      --border-subtle: #1e293b;
+      --accent-primary: #38bdf8;
+      --accent-hover: #0284c7;
+
+      --tier-green: #22c55e;
+      --tier-green-bg: rgba(34, 197, 94, 0.15);
+      --tier-yellow: #eab308;
+      --tier-yellow-bg: rgba(234, 179, 8, 0.15);
+      --tier-orange: #f97316;
+      --tier-orange-bg: rgba(249, 115, 22, 0.15);
+      --tier-red: #ef4444;
+      --tier-red-bg: rgba(239, 68, 68, 0.15);
+
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --warning-border: #f59e0b;
+      --warning-text: #fde68a;
+
+      --error-bg: rgba(239, 68, 68, 0.15);
+      --error-border: #ef4444;
+      --error-text: #fca5a5;
+
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      line-height: 1.5;
+      padding: 24px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    /* Header Section */
+    .header-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-title-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-primary);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .status-badge.error {
+      background: var(--error-bg);
+      color: var(--error-border);
+      border-color: var(--error-border);
+    }
+
+    .status-badge.healthy {
+      background: var(--tier-green-bg);
+      color: var(--tier-green);
+      border-color: var(--tier-green);
+    }
+
+    /* Metadata Grid */
+    .metadata-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .meta-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .meta-value {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      word-break: break-all;
+    }
+
+    /* Disclaimer & Warnings Banner */
+    .banner {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .banner-warning {
+      background: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-text);
+    }
+
+    .banner-error {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+    }
+
+    .banner-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Metric Distribution Cards */
+    .cards-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .tier-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tier-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .tier-card.green::before { background-color: var(--tier-green); }
+    .tier-card.yellow::before { background-color: var(--tier-yellow); }
+    .tier-card.orange::before { background-color: var(--tier-orange); }
+    .tier-card.red::before { background-color: var(--tier-red); }
+
+    .tier-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tier-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .tier-card.green .tier-name { color: var(--tier-green); }
+    .tier-card.yellow .tier-name { color: var(--tier-yellow); }
+    .tier-card.orange .tier-name { color: var(--tier-orange); }
+    .tier-card.red .tier-name { color: var(--tier-red); }
+
+    .tier-count {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .tier-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    /* Controls & Filters */
+    .controls-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .filter-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    select, input[type="text"] {
+      background: #0b1120;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .btn-reset {
+      background: #334155;
+      color: var(--text-primary);
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-reset:hover {
+      background: #475569;
+    }
+
+    .records-count-badge {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* Table Container */
+    .table-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    }
+
+    .table-wrapper {
+      max-height: 600px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      background: var(--bg-table-header);
+      color: var(--text-primary);
+      font-weight: 700;
+      padding: 12px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 2px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color 0.1s ease;
+    }
+
+    tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    tbody td {
+      padding: 12px 14px;
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    /* Alert Badges in Table */
+    .badge-tier {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+
+    .badge-tier.green {
+      background: var(--tier-green-bg);
+      color: var(--tier-green);
+      border: 1px solid rgba(34, 197, 94, 0.4);
+    }
+
+    .badge-tier.yellow {
+      background: var(--tier-yellow-bg);
+      color: var(--tier-yellow);
+      border: 1px solid rgba(234, 179, 8, 0.4);
+    }
+
+    .badge-tier.orange {
+      background: var(--tier-orange-bg);
+      color: var(--tier-orange);
+      border: 1px solid rgba(249, 115, 22, 0.4);
+    }
+
+    .badge-tier.red {
+      background: var(--tier-red-bg);
+      color: var(--tier-red);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .badge-tier.invalid {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+      border: 1px solid #475569;
+    }
+
+    .validation-note {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      max-width: 240px;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    /* Footer Scientific Limitations */
+    .footer-limitations {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .footer-limitations h3 {
+      color: var(--text-primary);
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .footer-limitations ul {
+      margin-left: 20px;
+      margin-top: 6px;
+    }
+
+    .footer-limitations li {
+      margin-bottom: 4px;
+    }
+
+    /* Loading Spinner */
+    .spinner-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      gap: 16px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--accent-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px 10px;
+      }
+      h1 {
+        font-size: 1.3rem;
+      }
+      .controls-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header Card -->
+    <header class="header-card">
+      <div class="header-title-row">
+        <div>
+          <h1>ClimateGuard AI — Chennai Heat Hazard Dashboard</h1>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">
+            Local Biometeorological Heat Hazard &amp; Forecast Surveillance (Read-Only)
+          </p>
+        </div>
+        <div id="system-status" class="status-badge">
+          <span>●</span> Initializing...
+        </div>
+      </div>
+
+      <div class="metadata-grid" id="metadata-section">
+        <div class="meta-item">
+          <span class="meta-label">Report Generation (UTC)</span>
+          <span class="meta-value" id="meta-generation-time">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Forecast Period</span>
+          <span class="meta-value" id="meta-forecast-period">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Valid / Total Records</span>
+          <span class="meta-value" id="meta-records-counts">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Invalid Records</span>
+          <span class="meta-value" id="meta-invalid-count">—</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Forecast Data Source</span>
+          <span class="meta-value" id="meta-data-source">—</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Error / Alert Banner -->
+    <div id="error-banner" class="banner banner-error" style="display: none;">
+      <div class="banner-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span id="error-title">Report Unavailable</span>
+      </div>
+      <div id="error-message">Unable to load heat hazard forecast.</div>
+    </div>
+
+    <!-- Mandatory Scientific Disclaimer Banner -->
+    <div class="banner banner-warning">
+      <div class="banner-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        Scientific Advisory &amp; Anti-Fabrication Notice
+      </div>
+      <div>
+        <strong>Estimates Only:</strong> Values displayed on this dashboard are biometeorological model-derived estimates computed from numerical weather forecasts (Open-Meteo 168h forecast for Chennai: 13.0827°N, 80.2707°E). They are <strong>not</strong> real-time ground weather station observations, <strong>not</strong> official government disaster alerts (e.g., IMD / TNSDMA), and <strong>not</strong> personalized clinical health predictions.
+      </div>
+    </div>
+
+    <!-- Alert Tier Distribution Cards -->
+    <section class="cards-row" id="tier-cards-row">
+      <div class="tier-card green">
+        <div class="tier-card-header">
+          <span class="tier-name">GREEN (NORMAL)</span>
+        </div>
+        <div class="tier-count" id="count-green">—</div>
+        <div class="tier-desc">Hazard index &lt; 27°C. Nominal thermal conditions. Fatigue possible with prolonged exposure.</div>
+      </div>
+
+      <div class="tier-card yellow">
+        <div class="tier-card-header">
+          <span class="tier-name">YELLOW (CAUTION)</span>
+        </div>
+        <div class="tier-count" id="count-yellow">—</div>
+        <div class="tier-desc">27°C – 32°C. Elevated fatigue and sunstroke risk during sustained outdoor exertion.</div>
+      </div>
+
+      <div class="tier-card orange">
+        <div class="tier-card-header">
+          <span class="tier-name">ORANGE (EXTREME CAUTION)</span>
+        </div>
+        <div class="tier-count" id="count-orange">—</div>
+        <div class="tier-desc">32°C – 41°C. High heat cramps and heat exhaustion risk. Hydration and shade recommended.</div>
+      </div>
+
+      <div class="tier-card red">
+        <div class="tier-card-header">
+          <span class="tier-name">RED (DANGER)</span>
+        </div>
+        <div class="tier-count" id="count-red">—</div>
+        <div class="tier-desc">&ge; 41°C. Severe heat stroke threat with continued exposure. High biometeorological hazard.</div>
+      </div>
+    </section>
+
+    <!-- Table Controls / Filters -->
+    <div class="controls-card">
+      <div class="filter-group">
+        <label class="filter-label" for="tier-filter">Alert Tier:</label>
+        <select id="tier-filter">
+          <option value="ALL">All Tiers</option>
+          <option value="GREEN">Green (Normal)</option>
+          <option value="YELLOW">Yellow (Caution)</option>
+          <option value="ORANGE">Orange (Extreme Caution)</option>
+          <option value="RED">Red (Danger)</option>
+          <option value="INVALID">Invalid / Unclassified</option>
+        </select>
+
+        <label class="filter-label" for="date-filter">Forecast Date:</label>
+        <select id="date-filter">
+          <option value="ALL">All Dates (Full 168h Horizon)</option>
+        </select>
+
+        <button class="btn-reset" id="btn-reset-filters">Reset Filters</button>
+      </div>
+
+      <div class="records-count-badge" id="table-record-count">
+        Showing — of — records
+      </div>
+    </div>
+
+    <!-- Hourly Forecast Table -->
+    <section class="table-card">
+      <div class="table-wrapper">
+        <table id="forecast-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Air Temp (°C)</th>
+              <th>Humidity (%)</th>
+              <th>Wind (km/h)</th>
+              <th>Apparent Temp (°C)</th>
+              <th>NOAA Heat Index (°C)</th>
+              <th>Selected Index</th>
+              <th>Alert Tier</th>
+              <th>Validation Notes</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td colspan="9" style="text-align: center; padding: 40px;">
+                <div class="spinner-container">
+                  <div class="spinner"></div>
+                  <span>Loading Chennai Heat Hazard Report...</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Scientific Limitations & Missing Data Notes -->
+    <footer class="footer-limitations" id="limitations-section">
+      <h3>Scientific Limitations &amp; Pipeline Constraints</h3>
+      <div id="limitations-content">
+        Loading limitations notes from report...
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // State
+    let reportData = null;
+    let allRecords = [];
+    let availableDates = [];
+
+    // Elements
+    const systemStatusEl = document.getElementById("system-status");
+    const errorBannerEl = document.getElementById("error-banner");
+    const errorTitleEl = document.getElementById("error-title");
+    const errorMessageEl = document.getElementById("error-message");
+
+    const metaGenTimeEl = document.getElementById("meta-generation-time");
+    const metaForecastPeriodEl = document.getElementById("meta-forecast-period");
+    const metaRecordsCountsEl = document.getElementById("meta-records-counts");
+    const metaInvalidCountEl = document.getElementById("meta-invalid-count");
+    const metaDataSourceEl = document.getElementById("meta-data-source");
+
+    const countGreenEl = document.getElementById("count-green");
+    const countYellowEl = document.getElementById("count-yellow");
+    const countOrangeEl = document.getElementById("count-orange");
+    const countRedEl = document.getElementById("count-red");
+
+    const tierFilterEl = document.getElementById("tier-filter");
+    const dateFilterEl = document.getElementById("date-filter");
+    const btnResetFiltersEl = document.getElementById("btn-reset-filters");
+    const tableRecordCountEl = document.getElementById("table-record-count");
+    const tableBodyEl = document.getElementById("table-body");
+    const limitationsContentEl = document.getElementById("limitations-content");
+
+    // Fetch report on page load
+    async function fetchReport() {
+      try {
+        const response = await fetch("/api/report");
+        const payload = await response.json();
+
+        if (payload.status !== "SUCCESS" || !payload.data) {
+          showError(payload.message || "Unable to load report.");
+          return;
+        }
+
+        reportData = payload.data;
+        availableDates = payload.available_dates || [];
+        allRecords = reportData.hourly_forecast_hazard_records || [];
+
+        renderDashboard(reportData, availableDates);
+      } catch (err) {
+        showError("Failed to communicate with dashboard backend: " + err.message);
+      }
+    }
+
+    function showError(message) {
+      systemStatusEl.className = "status-badge error";
+      systemStatusEl.innerHTML = "<span>●</span> Report Error";
+      errorBannerEl.style.display = "flex";
+      errorMessageEl.textContent = message;
+      tableBodyEl.innerHTML = `
+        <tr>
+          <td colspan="9" style="text-align: center; color: var(--error-text); padding: 32px;">
+            Error loading report: ${escapeHtml(message)}
+          </td>
+        </tr>`;
+    }
+
+    function renderDashboard(data, dates) {
+      systemStatusEl.className = "status-badge healthy";
+      systemStatusEl.innerHTML = "<span>●</span> Report Loaded (Read-Only)";
+      errorBannerEl.style.display = "none";
+
+      const meta = data.metadata || {};
+
+      // 1. Metadata
+      metaGenTimeEl.textContent = meta.generation_timestamp_utc || "N/A";
+      metaForecastPeriodEl.textContent = `${meta.forecast_period_start || "?"} to ${meta.forecast_period_end || "?"}`;
+      metaRecordsCountsEl.textContent = `${meta.valid_records_count || 0} / ${meta.total_forecast_hours || 0}`;
+      metaInvalidCountEl.textContent = `${meta.invalid_records_count || 0}`;
+      metaDataSourceEl.textContent = meta.forecast_source_file || "cache/weather_chennai_forecast_168h.json";
+
+      // 2. Alert Tier Counts
+      const dist = meta.alert_tier_distribution || {};
+      function getTierCount(distribution, keyword) {
+        for (const [k, v] of Object.entries(distribution)) {
+          if (k.toUpperCase().includes(keyword.toUpperCase())) {
+            return v;
+          }
+        }
+        return 0;
+      }
+      countGreenEl.textContent = getTierCount(dist, "GREEN");
+      countYellowEl.textContent = getTierCount(dist, "YELLOW");
+      countOrangeEl.textContent = getTierCount(dist, "ORANGE");
+      countRedEl.textContent = getTierCount(dist, "RED");
+
+      // 3. Populate Date Filter Dropdown
+      dateFilterEl.innerHTML = '<option value="ALL">All Dates (Full 168h Horizon)</option>';
+      dates.forEach(d => {
+        const opt = document.createElement("option");
+        opt.value = d;
+        opt.textContent = d;
+        dateFilterEl.appendChild(opt);
+      });
+
+      // Populate Tier filter dropdown dynamically
+      const currentTier = tierFilterEl.value;
+      let tierHtml = '<option value="ALL">All Tiers</option>';
+      const standardTiers = ["Green (Normal)", "Yellow (Caution)", "Orange (Extreme Caution)", "Red (Danger)"];
+      const allTiers = Array.from(new Set([...(data.available_tiers || []), ...standardTiers]));
+      allTiers.forEach(t => {
+        tierHtml += `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`;
+      });
+      tierFilterEl.innerHTML = tierHtml;
+      if (allTiers.includes(currentTier)) {
+        tierFilterEl.value = currentTier;
+      }
+
+      // 4. Populate Limitations Section
+      const limits = data.scientific_limitations_and_disclaimer || {};
+      let limitsHtml = `<ul>`;
+      for (const [k, v] of Object.entries(limits)) {
+        const label = k.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+        if (Array.isArray(v)) {
+          v.forEach(item => {
+            limitsHtml += `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(item)}</li>`;
+          });
+        } else if (typeof v === "string") {
+          limitsHtml += `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(v)}</li>`;
+        }
+      }
+      limitsHtml += `</ul>`;
+      limitationsContentEl.innerHTML = limitsHtml;
+
+      // 5. Initial Table Render
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const selectedTier = tierFilterEl.value;
+      const selectedDate = dateFilterEl.value;
+
+      const filtered = allRecords.filter(r => {
+        if (selectedTier !== "ALL") {
+          const rTier = String(r.alert_tier || "INVALID").toUpperCase();
+          const target = selectedTier.toUpperCase();
+          if (!rTier.includes(target) && !target.includes(rTier)) return false;
+        }
+        if (selectedDate !== "ALL") {
+          const time = String(r.time || "");
+          if (!time.startsWith(selectedDate)) return false;
+        }
+        return true;
+      });
+
+      renderTable(filtered);
+    }
+
+    function renderTable(records) {
+      tableRecordCountEl.textContent = `Showing ${records.length} of ${allRecords.length} records`;
+
+      if (records.length === 0) {
+        tableBodyEl.innerHTML = `
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 32px; color: var(--text-muted);">
+              No hourly forecast records match the selected filters.
+            </td>
+          </tr>`;
+        return;
+      }
+
+      const rows = records.map(r => {
+        const rawTier = r.alert_tier || "INVALID";
+        const tierUpper = rawTier.toUpperCase();
+        let badgeClass = "badge-tier";
+        if (tierUpper.includes("GREEN")) badgeClass += " green";
+        else if (tierUpper.includes("YELLOW")) badgeClass += " yellow";
+        else if (tierUpper.includes("ORANGE")) badgeClass += " orange";
+        else if (tierUpper.includes("RED")) badgeClass += " red";
+        else badgeClass += " invalid";
+
+        const airTemp = formatNumber(r.air_temperature_c);
+        const rh = formatNumber(r.relative_humidity_pct);
+        const wind = r.wind_speed_kmh !== undefined && r.wind_speed_kmh !== null ? formatNumber(r.wind_speed_kmh) : "N/A";
+        const appTemp = formatNumber(r.steadman_apparent_temp_c);
+        const heatIdx = r.noaa_heat_index_c !== undefined && r.noaa_heat_index_c !== null ? formatNumber(r.noaa_heat_index_c) : "N/A";
+        const hazardMetric = r.selected_hazard_metric ? escapeHtml(r.selected_hazard_metric) : "N/A";
+        const hazardTemp = formatNumber(r.hazard_temperature_c);
+        const notes = r.validation_notes && r.validation_notes.length > 0 ? escapeHtml(r.validation_notes.join(", ")) : "Valid";
+
+        return `
+          <tr>
+            <td style="font-family: monospace; font-weight: 600;">${escapeHtml(r.time || "N/A")}</td>
+            <td>${airTemp}</td>
+            <td>${rh}</td>
+            <td>${wind}</td>
+            <td>${appTemp}</td>
+            <td>${heatIdx}</td>
+            <td><span style="font-size: 0.8rem; color: var(--accent-primary);">${hazardMetric} (${hazardTemp}°C)</span></td>
+            <td><span class="${badgeClass}">${escapeHtml(rawTier)}</span></td>
+            <td class="validation-note">${notes}</td>
+          </tr>
+        `;
+      });
+
+      tableBodyEl.innerHTML = rows.join("");
+    }
+
+    function formatNumber(val) {
+      if (val === undefined || val === null || isNaN(val)) return "N/A";
+      return Number(val).toFixed(1);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Event listeners
+    tierFilterEl.addEventListener("change", applyFilters);
+    dateFilterEl.addEventListener("change", applyFilters);
+    btnResetFiltersEl.addEventListener("click", () => {
+      tierFilterEl.value = "ALL";
+      dateFilterEl.value = "ALL";
+      applyFilters();
+    });
+
+    // Start
+    fetchReport();
+  </script>
+</body>
+</html>
