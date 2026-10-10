@@ -86,20 +86,24 @@ def download(code, dest):
                     r.raise_for_status()
                     size = int(r.headers.get("content-length", 0))
                     got, mark = 0, 0
+                    t_dl = time.time()
                     with open(tmp, "wb") as fh:
                         for chunk in r.iter_content(4 * 1024 * 1024):
                             fh.write(chunk)
                             got += len(chunk)
-                            if got - mark >= 150 * 1024 * 1024:
+                            if got - mark >= 50 * 1024 * 1024 or (size and got >= size):
                                 mark = got
-                                print(f"      {got / 1e6:,.0f} / {size / 1e6:,.0f} MB")
+                                dt = time.time() - t_dl
+                                spd = (got / 1e6) / dt if dt > 0 else 0
+                                pct = (got / size * 100) if size else 0
+                                print(f"      {got / 1e6:,.0f} / {size / 1e6:,.0f} MB ({pct:.1f}%) @ {spd:.2f} MB/s", flush=True)
                 if size and got < size:
                     raise IOError(f"download cut short: {got} of {size} bytes")
                 tmp.replace(dest)
                 return
             except Exception as err:
                 last = f"{type(err).__name__}: {err}"
-                print(f"      download problem ({last}), try {attempt + 1}/3")
+                print(f"      download problem ({last}), try {attempt + 1}/3", flush=True)
                 time.sleep(10)
     raise RuntimeError(f"could not download {code}: {last}")
 
@@ -121,16 +125,16 @@ def read_window(code, bounds, refetch):
                 got = read_local_or_remote(url.format(code=code), bounds)
                 break
             except Exception as err:
-                print(f"  {code}: partial read failed on {url.split('/')[2]} ({str(err)[:90]})")
+                print(f"  {code}: partial read failed on {url.split('/')[2]} ({str(err)[:90]})", flush=True)
         if got is None:
             REMOTE_OK = False
             print("  The server does not support partial reads, so each whole file (~740 MB) is downloaded, "
-                  "the Chennai window is cut out, then the big file is deleted.")
+                  "the Chennai window is cut out, then the big file is deleted.", flush=True)
     if got is None:
         raw = CACHE / "raw"
         raw.mkdir(exist_ok=True)
         big = raw / f"{code}.tif"
-        print(f"  {code}: downloading the whole file ...")
+        print(f"  {code}: downloading the whole file ...", flush=True)
         download(code, big)
         got = read_local_or_remote(str(big), bounds)
         big.unlink()
@@ -142,7 +146,7 @@ def read_window(code, bounds, refetch):
     vals = [tr.a, tr.c, tr.e, tr.f]
     np.save(f, arr)
     meta.write_text(" ".join(repr(v) for v in vals))
-    print(f"  {code}: {arr.shape[1]} x {arr.shape[0]} pixels, {arr.sum():,.0f} people, {time.time() - t0:.0f}s")
+    print(f"  {code}: {arr.shape[1]} x {arr.shape[0]} pixels, {arr.sum():,.0f} people, {time.time() - t0:.0f}s", flush=True)
     return arr, vals
 
 
