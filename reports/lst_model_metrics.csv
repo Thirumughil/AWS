@@ -1,0 +1,11 @@
+metric,value
+anomaly_cv_r2_ridge,0.672
+anomaly_cv_rmse_c_ridge,1.3273
+anomaly_cv_r2_gboost,0.8267
+anomaly_cv_rmse_c_gboost,0.9649
+anomaly_baseline_rmse_c,2.3175
+anomaly_perdate_r2_median,0.6041
+anomaly_perdate_rmse_c_median,1.6477
+anomaly_ceiling_r2_median,0.7346
+city_loo_rmse_c,2.463
+city_r2,0.3789
