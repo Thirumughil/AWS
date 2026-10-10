@@ -213,7 +213,7 @@ def main():
     grid["bldg_count"] = grid["bldg_count"].fillna(0).astype(int)
     grid["bldg_footprint_m2"] = grid["bldg_footprint_m2"].fillna(0).round(1)
     grid["bldg_cover_frac"] = (grid["bldg_footprint_m2"] / (grid["area_km2"] * 1e6)).round(4)
-    grid["small_bldg_frac"] = grid["small_bldg_frac"].round(3)
+    grid["small_bldg_frac"] = grid["small_bldg_frac"].fillna(0).round(3)
 
     print(f"\nBuildings: {len(raw):,} downloaded, {len(b):,} after removing tile-edge duplicates, "
           f"{len(inside):,} inside the hex grid")
