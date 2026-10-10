@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Urban Heat Risk Prediction development API
+
+Globals:
+  Function:
+    Timeout: 10
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  HeatRiskDevFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello_world/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      MemorySize: 128
+      Environment:
+        Variables:
+          TABLE_NAME: HeatRiskPredictions
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: HeatRiskPredictions
+      Events:
+        RiskPost:
+          Type: Api
+          Properties:
+            Path: /risk
+            Method: post
+
+Outputs:
+  RiskApiUrl:
+    Description: Development API URL for POST /risk
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/Prod/risk"

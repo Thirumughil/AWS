@@ -1,0 +1,22 @@
+# Production deployment artifacts - do not share
+production-lambda.zip
+production-lambda/
+
+# AWS SAM generated files
+.aws-sam/
+
+# Credentials and local secrets
+.aws/
+.env
+.env.*
+!.env.example
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Additional Python cache protection
+**/__pycache__/
+*.py[cod]

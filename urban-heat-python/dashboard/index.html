@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClimateGuard AI | Urban Heat Risk</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:#f2f5fa;color:#1b2940}
+header{background:#172b4d;color:white;padding:23px max(5%,calc((100% - 1100px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px}
+header h2{margin:0;font-size:22px}header h2 span{color:#ffb65e}
+header p{margin:5px 0 0;color:#c9d6e8;font-size:13px}
+.status{font-size:12px;border:1px solid #58708f;padding:8px 12px;border-radius:20px}
+main{max-width:1100px;margin:32px auto;padding:0 20px}
+h1{margin-bottom:8px;font-size:29px}.sub{color:#68778c;line-height:1.6;margin-bottom:25px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.card{background:white;padding:20px;border-radius:14px;border:1px solid #e2e8f0;box-shadow:0 4px 15px #182b4708}
+.metric-label{font-size:13px;color:#718096}.metric-value{font-size:21px;font-weight:700;margin-top:12px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+h3{margin:0 0 8px}.description{font-size:13px;color:#758198;line-height:1.6;margin-bottom:20px}
+label{display:block;font-size:13px;font-weight:650;margin:16px 0 7px}
+input{width:100%;padding:12px;border:1px solid #d4ddea;border-radius:8px;font-size:15px}
+input:focus{outline:2px solid #b8d6ff}
+button{width:100%;margin-top:22px;background:#2468db;color:white;border:0;border-radius:9px;padding:13px;font-weight:700;font-size:14px;cursor:pointer}
+button:disabled{opacity:.6}
+.notice{font-size:12px;line-height:1.6;color:#718096;margin-top:16px}
+.empty{min-height:260px;display:grid;place-items:center;text-align:center;color:#8490a3;line-height:1.7}
+#result{display:none}
+.badge{display:inline-block;border-radius:20px;padding:7px 12px;font-weight:800;font-size:12px}
+.low{background:#dcfce7;color:#166534}.moderate{background:#fef3c7;color:#92400e}.high{background:#ffedd5;color:#9a3412}.severe{background:#fee2e2;color:#991b1b}
+.readings{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.reading{background:#f3f6fb;border-radius:9px;padding:15px}.reading small{display:block;color:#758198;margin-bottom:8px}.reading strong{font-size:22px}
+#error{display:none;background:#fee2e2;color:#991b1b;padding:12px;border-radius:8px;font-size:13px;margin-top:15px}
+footer{text-align:center;color:#7b8798;font-size:12px;padding:28px 12px}
+@media(max-width:700px){.metrics{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}header{flex-wrap:wrap}.metric-value{font-size:18px}}
+</style>
+</head>
+<body>
+<header>
+ <div><h2>ClimateGuard <span>AI</span></h2><p>Urban Heat Risk Prediction System</p></div>
+ <div class="status">● Local dashboard · AWS backend</div>
+</header>
+<main>
+ <h1>Heat Risk Dashboard</h1>
+ <p class="sub">Analyze temperature and humidity to estimate heat risk for a location.</p>
+ <section class="metrics">
+  <div class="card"><div class="metric-label"><span class="dot" style="background:#22c55e"></span>LOW</div><div class="metric-value">Low risk</div></div>
+  <div class="card"><div class="metric-label"><span class="dot" style="background:#eab308"></span>MODERATE</div><div class="metric-value">Moderate</div></div>
+  <div class="card"><div class="metric-label"><span class="dot" style="background:#f97316"></span>HIGH</div><div class="metric-value">High risk</div></div>
+  <div class="card"><div class="metric-label"><span class="dot" style="background:#ef4444"></span>SEVERE</div><div class="metric-value">Severe risk</div></div>
+ </section>
+ <section class="columns">
+  <div class="card">
+   <h3>New prediction</h3><p class="description">Enter readings to request a prediction from your existing API.</p>
+   <form id="form">
+    <label for="location">Location ID</label><input id="location" maxlength="100" required value="dashboard_test_001">
+    <label for="temp">Temperature (°C)</label><input id="temp" type="number" min="-50" max="70" step="0.1" value="36" required>
+    <label for="humidity">Relative humidity (%)</label><input id="humidity" type="number" min="0" max="100" step="0.1" value="40" required>
+    <button id="submit" type="submit">Calculate heat risk</button>
+   </form>
+   <p class="notice">Successful predictions are saved to your existing DynamoDB table. Use a test location ID.</p>
+  </div>
+  <div class="card">
+   <h3>Prediction result</h3><p class="description">The latest API response will appear here.</p>
+   <div class="empty" id="empty">Your prediction will appear here after submission.</div>
+   <div id="result"><span id="badge" class="badge"></span><h2 id="riskTitle"></h2><p id="message" class="description"></p>
+    <div class="readings"><div class="reading"><small>Temperature</small><strong id="outTemp"></strong></div><div class="reading"><small>Humidity</small><strong id="outHumidity"></strong></div></div>
+    <p id="outLocation" class="notice"></p>
+   </div>
+   <div id="error" role="alert"></div>
+  </div>
+ </section>
+</main>
+<footer>ClimateGuard AI · Educational prototype · Categories are project-defined, not official health warnings.</footer>
+<script>
+const API_URL="https://gz3tj5hfxi.execute-api.us-east-1.amazonaws.com/prod/risk";
+const form=document.getElementById("form");
+form.addEventListener("submit",async function(e){
+ e.preventDefault();
+ const error=document.getElementById("error");
+ error.style.display="none";
+ const payload={
+  location_id:document.getElementById("location").value.trim(),
+  temperature:Number(document.getElementById("temp").value),
+  humidity:Number(document.getElementById("humidity").value)
+ };
+ const button=document.getElementById("submit");
+ button.disabled=true;button.textContent="Sending prediction...";
+ try{
+  const response=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  const data=await response.json();
+  if(!response.ok){error.textContent=data.error||data.message||"Request failed: "+response.status;error.style.display="block";return}
+  document.getElementById("empty").style.display="none";
+  document.getElementById("result").style.display="block";
+  const level=String(data.risk_level||"UNKNOWN").toUpperCase();
+  const badge=document.getElementById("badge");
+  badge.textContent=level+" RISK";
+  badge.className="badge "+level.toLowerCase();
+  document.getElementById("riskTitle").textContent=level+" heat risk";
+  document.getElementById("message").textContent=data.message||"Prediction received.";
+  document.getElementById("outTemp").textContent=data.temperature+" °C";
+  document.getElementById("outHumidity").textContent=data.humidity+"%";
+  document.getElementById("outLocation").textContent="Location ID: "+data.location_id;
+ }catch(err){
+  error.textContent="Could not reach the API. If the browser reports a CORS error, the API needs an approved CORS configuration. No AWS settings were changed.";
+  error.style.display="block";
+ }finally{button.disabled=false;button.textContent="Calculate heat risk"}
+});
+</script>
+</body>
+</html>
