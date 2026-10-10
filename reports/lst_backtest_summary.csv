@@ -1,0 +1,11 @@
+metric,value
+dates_tested,36.0
+city_err_rmse_c,2.463
+city_err_mean_c,0.0261
+city_err_abs_max_c,6.31
+hex_rmse_median_c,2.7597
+hex_rmse_nopattern_median_c,3.3401
+anom_r2_median,0.5031
+anom_spearman_median,0.6278
+top10_found_median,0.25
+top10_found_worst,0.1425
